@@ -11,16 +11,7 @@ constexpr int sign_multiplier(int number) {
 class Chess {
 public:
 	friend std::ostream& print_board(std::ostream& os, const Chess& c1);
-	bool possible_move(std::string from_to) {
-		if (from_to.size() < 4) {
-			std::cout << "Incorrect input.\n";
-			return 0;
-		}
-		int Bx = from_to[0] - 'a';
-		int By = 7 - from_to[1] + '1';
-		int Dx = from_to[2] - 'a';
-		int Dy = 7 - from_to[3] + '1';
-		bool black_turn = round_no % 2;
+	bool possible_move(int Bx, int By, int Dx, int Dy, bool player_requested_check) {
 		if (Bx < 0 || Bx >  7 || By < 0 || By > 7 || Dx < 0 || Dx > 7 || Dy < 0 || Dy > 7 || (Bx == Dx && By == Dy)) {
 			std::cout << "Fundamental rule broken.\n";
 			return 0;
@@ -111,7 +102,7 @@ public:
 			break;
 		case 'K':
 		case 'k':
-			if (!(abs(Bx - Dx) < 2 && abs(By - Dy) < 2)) {
+			if (!(abs(Bx - Dx) < 2 && abs(By - Dy) < 2 && (!player_requested_check||!under_attack(Bx,By,Dx,Dy)))) {
 				std::cout << "King rule broken.\n";
 				return 0;
 			}
@@ -125,7 +116,7 @@ public:
 			break;
 		case 'p':
 			if (!(Bx == Dx && table[Dy][Dx] == '-' && (Dy - By == 1 || Dy - By == 2 && table[Dy - 1][Dx] == '-' && By == 1) ||
-				(abs(Dx - Bx) == 1 && Dy - By == -1 && isupper(table[Dy][Dx])))) {
+				(abs(Dx - Bx) == 1 && Dy - By == 1 && isupper(table[Dy][Dx])))) {
 				std::cout << "Black pawn rule broken or path obstructed.\n";
 				return 0;
 			}
@@ -136,17 +127,51 @@ public:
 		}
 		return 1;
 	}
-	void move_order(std::string from_to) {
-		int Bx = from_to[0] - 'a';
-		int By = 7 - from_to[1] + '1';
-		int Dx = from_to[2] - 'a';
-		int Dy = 7 - from_to[3] + '1';
+	bool under_attack(int Bx, int By, int Dx, int Dy) {
+		if (table[By][Bx] == 'K') {
+			if (table[Dy][Dx] == '-')
+				table[Dy][Dx] = 'T';
+			for (int i = 0; i < 8; i++) {
+				for (int j = 0; j < 8; j++) {
+					if (islower(table[i][j]) && possible_move(j, i, Dx, Dy, 0)) {
+						if (table[Dy][Dx] == 'T')
+							table[Dy][Dx] = '-';
+						return 1;
+					}
+				}
+			}
+		}
+		else {
+			if (table[Dy][Dx] == '-')
+				table[Dy][Dx] = 't';
+			for (int i = 0; i < 8; i++) {
+				for (int j = 0; j < 8; j++) {
+					if (isupper(table[i][j]) && possible_move(j, i, Dx, Dy, 0)) {
+						if (table[Dy][Dx] == 't')
+							table[Dy][Dx] = '-';
+						return 1;
+					}
+				}
+			}
+		}
+		return 0;
+	}
+	void move_order(int Bx, int By, int Dx, int Dy) {
 		table[Dy][Dx] = table[By][Bx];
 		table[By][Bx] = '-';
 		++round_no;
 	}
 private:
-	char table[8][8] = { {'r','n','b','q','k','b','n','r'},
+	char table[8][8] = { {'-','-','-','-','k','-','-','-'},
+						 {'-','-','-','-','-','p','-','-'},
+						 {'-','-','-','-','-','-','-','-'},
+						 {'-','-','-','-','-','-','-','-'},
+						 {'-','-','-','-','-','-','-','-'},
+						 {'-','-','-','-','-','-','-','-'},
+						 {'-','-','-','-','-','-','-','-'},
+						 {'-','-','-','-','K','-','-','-'}, };
+	/*
+					   { {'r','n','b','q','k','b','n','r'},
 						 {'p','p','p','p','p','p','p','p'},
 						 {'-','-','-','-','-','-','-','-'},
 						 {'-','-','-','-','-','-','-','-'},
@@ -154,6 +179,7 @@ private:
 						 {'-','-','-','-','-','-','-','-'},
 						 {'P','P','P','P','P','P','P','P'},
 						 {'R','N','B','Q','K','B','N','R'}, };
+	*/
 	int round_no = 0;
 };
 std::ostream& print_board(std::ostream& os, const Chess& c1);
