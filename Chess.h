@@ -47,6 +47,28 @@ public:
 	void move_order(int Bx, int By, int Dx, int Dy) {
 		table[Dy][Dx] = table[By][Bx];
 		table[By][Bx] = '-';
+		char choice;
+		while (true) {
+			if (Dy == 0 && table[Dy][Dx] == 'P' || Dy == 7 && table[Dy][Dx] == 'p') {
+				std::cout << "Choose one of the following figures to which you want your pawn to be promoted: Q, R, B, N: ";
+				std::cin >> choice;
+				switch (choice) {
+				case 'Q':
+				case 'q':
+				case 'R':
+				case 'r':
+				case 'B':
+				case 'b':
+				case 'N':
+				case 'n':
+					table[Dy][Dx] = (round_no % 2 ? tolower(choice) : toupper(choice));
+					break;
+				default:
+					continue;
+				}
+			}
+			break;
+		}
 		round_no++;
 	}
 private:
@@ -160,14 +182,14 @@ private:
 		}
 		return 0;
 	}
-	char table[8][8] = { {'r','n','b','q','k','b','n','r'},
-						 {'p','p','p','p','p','p','p','p'},
+	char table[8][8] = { {'r','n','b','q','k','b','p','-'},
+						 {'p','p','p','p','p','p','-','-'},
 						 {'-','-','-','-','-','-','-','-'},
 						 {'-','-','-','-','-','-','-','-'},
 						 {'-','-','-','-','-','-','-','-'},
 						 {'-','-','-','-','-','-','-','-'},
-						 {'P','P','P','P','P','P','P','P'},
-						 {'R','N','B','Q','K','B','N','R'}, };
+						 {'P','P','P','P','P','P','-','-'},
+						 {'R','N','B','Q','K','B','-','P'}, };
 	int round_no = 0;
 };
 std::ostream& print_board(std::ostream& os, const Chess& c1);
