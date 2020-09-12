@@ -8,10 +8,50 @@ constexpr int sign_multiplier(int number) {
 class Chess {
 public:
 	friend std::ostream& print_board(std::ostream& os, const Chess& c1);
-	bool possible_move(int Bx, int By, int Dx, int Dy, bool player_requested_check) {
-		if (Bx < 0 || Bx >  7 || By < 0 || By > 7 || Dx < 0 || Dx > 7 || Dy < 0 || Dy > 7 || (Bx == Dx && By == Dy))
+	bool try_move(int Bx, int By, int Dx, int Dy) {
+		bool validity = correct_turn(Bx, By) && possible_move(Bx, By, Dx, Dy);
+		if (!validity)
 			return 0;
-		if (player_requested_check && round_no%2 == isupper(table[By][Bx]))
+		char old_figure = table[Dy][Dx];
+		table[Dy][Dx] = table[By][Bx];
+		table[By][Bx] = '-';
+		validity = !is_check();
+		table[By][Bx] = table[Dy][Dx];
+		table[Dy][Dx] = old_figure;
+		return validity;
+	}
+	bool is_check() {
+		char king_needed = (round_no % 2 ? 'k' : 'K');
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				if (table[i][j] == king_needed)
+					return under_attack(j, i);
+			}
+		}
+		return 0;
+	}
+	//checks for stalemate or checkmate - is_check()&&is_mate == checkmate >>>> !is_check()&&is_mate == stalemate
+	bool is_mate() {
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				for (int k = 0; k < 8; k++) {
+					for (int l = 0; l < 8; l++) {
+						if (try_move(i, j, k, l))
+							return 0;
+					}
+				}
+			}
+		}
+		return 1;
+	}
+	void move_order(int Bx, int By, int Dx, int Dy) {
+		table[Dy][Dx] = table[By][Bx];
+		table[By][Bx] = '-';
+		round_no++;
+	}
+private:
+	bool possible_move(int Bx, int By, int Dx, int Dy) {
+		if (Bx < 0 || Bx >  7 || By < 0 || By > 7 || Dx < 0 || Dx > 7 || Dy < 0 || Dy > 7 || (Bx == Dx && By == Dy))
 			return 0;
 		if (isalpha(table[By][Bx]) && isalpha(table[Dy][Dx]) && isupper(table[By][Bx]) == isupper(table[Dy][Dx]))
 			return 0;
@@ -23,7 +63,7 @@ public:
 			//rook path clearance check, generates a warning that the program might go out of the bounds of the array but that is an already rectified issue
 			//same goes for the bishop check
 			if (Bx == Dx)
-				for (int i = By + sign_multiplier(Dy-By); i != Dy; i += sign_multiplier(Dy - By))
+				for (int i = By + sign_multiplier(Dy - By); i != Dy; i += sign_multiplier(Dy - By))
 					if (table[i][Bx] != '-')
 						return 0;
 			if (By == Dy)
@@ -37,7 +77,7 @@ public:
 			if (!((abs(By - Dy) == 2 && abs(Bx - Dx) == 1) || (abs(Bx - Dx) == 2 && abs(By - Dy) == 1)))
 				return 0;
 			break;
-		case 'B': 
+		case 'B':
 		case 'b':
 			if (!(Bx - Dx != 0 && abs(Bx - Dx) == abs(By - Dy)))
 				return 0;
@@ -78,11 +118,11 @@ public:
 			break;
 		case 'K':
 		case 'k':
-			if (!(abs(Bx - Dx) < 2 && abs(By - Dy) < 2 && (!player_requested_check||!under_attack(Bx,By,Dx,Dy))))
+			if (!(abs(Bx - Dx) < 2 && abs(By - Dy) < 2))
 				return 0;
 			break;
 		case 'P':
-			if (!(Bx == Dx && table[Dy][Dx] == '-' && (Dy - By == -1 || Dy - By == -2 && table[Dy - 1][Dx] == '-' && By == 6) || 
+			if (!(Bx == Dx && table[Dy][Dx] == '-' && (Dy - By == -1 || Dy - By == -2 && table[Dy - 1][Dx] == '-' && By == 6) ||
 				(abs(Dx - Bx) == 1 && Dy - By == -1 && islower(table[Dy][Dx]))))
 				return 0;
 			break;
@@ -96,52 +136,30 @@ public:
 		}
 		return 1;
 	}
-	//Checks whether the king will be under attack should he move to a given place
-	//It can be used on the present field given that Bx=Dx and By=Dy
-	bool under_attack(int Bx, int By, int Dx, int Dy) {
-		char old_figure = table[Dy][Dx];
-		if (table[By][Bx] == 'K') {
-			table[Dy][Dx] = 'T';
+	bool correct_turn(int Bx, int By) {
+		return round_no % 2 == 0 && isupper(table[By][Bx]) || round_no % 2 == 1 && islower(table[By][Bx]);
+		return 1;
+	}
+	//Checks whether a field is under attack by an enemy figure
+	bool under_attack(int Bx, int By) {
+		if (round_no % 2) {
 			for (int i = 0; i < 8; i++) {
 				for (int j = 0; j < 8; j++) {
-					if (islower(table[i][j]) && possible_move(j, i, Dx, Dy, 0)) {
-						if (table[Dy][Dx] == 'T')
-							table[Dy][Dx] = old_figure;
+					if (isupper(table[i][j]) && possible_move(j, i, Bx, By))
 						return 1;
-					}
 				}
 			}
 		}
 		else {
-			table[Dy][Dx] = 't';
 			for (int i = 0; i < 8; i++) {
 				for (int j = 0; j < 8; j++) {
-					if (isupper(table[i][j]) && possible_move(j, i, Dx, Dy, 0)) {
-						if (table[Dy][Dx] == 't')
-							table[Dy][Dx] = old_figure;
+					if (islower(table[i][j]) && possible_move(j, i, Bx, By))
 						return 1;
-					}
 				}
 			}
 		}
 		return 0;
 	}
-	bool is_check() {
-		char king_needed = (round_no % 2 ? 'k' : 'K');
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
-				if (table[i][j] == king_needed)
-					return under_attack(j, i, j, i);
-			}
-		}
-		return 0;
-	}
-	void move_order(int Bx, int By, int Dx, int Dy) {
-		table[Dy][Dx] = table[By][Bx];
-		table[By][Bx] = '-';
-		round_no++;
-	}
-private:
 	char table[8][8] = { {'r','n','b','q','k','b','n','r'},
 						 {'p','p','p','p','p','p','p','p'},
 						 {'-','-','-','-','-','-','-','-'},
